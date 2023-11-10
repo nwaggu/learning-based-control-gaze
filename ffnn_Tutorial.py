@@ -48,14 +48,15 @@ class FeedForwardNet(nn.Module):
         flattened_data = self.flatten(input_data)
         logits = self.dense_layers(flattened_data)
         predictions = self.softmax(logits)
+        return predictions
 
 def train_one_epoch(model, data_loader, loss_fn, optimizer, device):
     for inputs, targets in data_loader:
         inputs, targets = inputs.to(device), targets.to(device)
         
         #Calculate loss
-        predictions = model(inputs)
-        print(predictions, targets)
+        predictions = model.forward(inputs)
+        #print(predictions, targets)
         loss = loss_fn(predictions, targets)
         
         # Backpropogate loss and update weights
