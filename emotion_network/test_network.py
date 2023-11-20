@@ -5,16 +5,14 @@ from ffnn_Tutorial import FeedForwardNet, download_mnist_datasets
 #In our case it would be emotions probably!
 
 class_mapping = [
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6"
-    "7",
-    "8",
-    "9"
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07"
+    "08"
 ]
 
 def predict(model, input, target, class_mapping):
