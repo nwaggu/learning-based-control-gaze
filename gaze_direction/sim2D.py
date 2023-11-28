@@ -131,6 +131,14 @@ class SIM2D:
         if y < ymin or y > ymax:
             return False
         return True
+    
+    def num_inside_fov(self):
+        num = 0
+        for point in self.people_loc[:,0:2]:
+            if self._is_inside_fov(point, self.gaze_pos):
+                num += 1
+
+        return num
 
     def _get_reward(self):
         """Returns the reward based on the number of people inside the robot's FOV"""
@@ -178,7 +186,7 @@ class SIM2D:
 
     def step_discrete(self, action):
         self.gaze_pos = self._take_action_discrete(action, self.gaze_pos)
-        reward = self._get_reward(self.gaze_pos)
+        reward = self._get_reward()
         return deepcopy(self.gaze_pos), reward
     
     def step_continuous(self, action, moving_people=False):
@@ -204,20 +212,28 @@ class SIM2D:
     def make_plot(self, show=True):
         fig, ax = plt.subplots(1,1)
         # plot the people, speakers circled in red
-        ax.scatter(self.people_loc[:,0], self.people_loc[:,1])
+        ax.scatter(self.people_loc[:,0], self.people_loc[:,1], label="People")
+        speakers_x = []
+        speakers_y = []
         for i, val in enumerate(self.people_loc[:,-1]):
             if val == 1:
-                ax.scatter(self.people_loc[i,0], self.people_loc[i,1], s=80, facecolors='none', edgecolors='r')
+                speakers_x.append(self.people_loc[i,0])
+                speakers_y.append(self.people_loc[i,1])
+
+        ax.scatter(speakers_x, speakers_y, s=80, facecolors='none', edgecolors='r', label="Speakers")
         # ax.scatter(self.speakers_loc[:,0], self.speakers_loc[:,1], s=80, facecolors='none', edgecolors='r')
 
         # plot the 'robot' field of view centerpoint and square
-        ax.plot(self.gaze_pos[0], self.gaze_pos[1], 'y+')
+        ax.plot(self.gaze_pos[0], self.gaze_pos[1], 'y+', label="Gaze Center")
         rect_ll = (self.gaze_pos[0] - self.fov[0]/2, self.gaze_pos[1] - self.fov[1]/2)
         fov_rect = Rectangle(rect_ll, self.fov[0], self.fov[1], facecolor='none', edgecolor='y')
         ax.add_patch(fov_rect)
 
         ax.set_xlim(-1, self.grid_world[0])
         ax.set_ylim(-1, self.grid_world[1])
+
+        ax.set_title("Gridworld Representation")
+        ax.legend()
         
         if show:
             plt.show()
@@ -246,9 +262,9 @@ if __name__ == "__main__":
     # print(mysim._is_inside_fov(point, mysim.gaze_pos))
 
     mysim.make_plot()
-    print(mysim.moving_people)
-    mysim.step_continuous([1,1], moving_people=True)
-    mysim.make_plot()
+    # print(mysim.moving_people)
+    # mysim.step_continuous([1,1], moving_people=True)
+    # mysim.make_plot()
 
     # print(mysim.gaze_pos, mysim._get_reward())
     # mysim.make_plot()

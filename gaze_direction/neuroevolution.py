@@ -47,10 +47,12 @@ class NeuralNetwork(nn.Module):
         return output
 
 class NeuroEvolution():
-    def __init__(self, num_states) -> None:
+    def __init__(self, num_states, num_networks) -> None:
 
         self.num_states = num_states
         self.network_pool = None
+        self._initialize_networks(num_networks)
+
     
     def _rand_matrix_index(self, matrix):
         """ Mutation and crossover helper function.
@@ -237,6 +239,7 @@ class NeuroEvolution():
                 break
 
             elif visualizer:
+                plt.ion()
                 plt.plot(reward_over_time)
                 plt.title("Immediate Reward")
                 plt.xlabel("Time Steps")
@@ -244,15 +247,14 @@ class NeuroEvolution():
                 plt.pause(0.001)
                 plt.show()
 
-        # if visualizer:
-        #     plt.ioff()
-        #     gridworld.make_plot()
+        if visualizer:
+            plt.ioff()
+            gridworld.make_plot()
 
         return time_step_reward
     
-    def do_learning(self, epochs, num_networks, moving_people=False):
+    def do_learning(self, epochs, moving_people=False):
         """Runs a genetic algorithm to modify the NN weights"""
-        self._initialize_networks(num_networks)
         best_epoch_reward = []
         for learning_epoch in tqdm(range(epochs)):
             # pick network using epsilon-greedy alg
@@ -289,7 +291,7 @@ class NeuroEvolution():
         
         state = gridworld.reset(moving_people)
         action = self.select_action(network, state, epsilon=0)
-        test_reward = self._run(state, action, network, max_steps=20, visualizer=True, epsilon=0, moving_people=moving_people)
+        test_reward = self._run(state, action, network, max_steps=70, visualizer=True, epsilon=0, moving_people=moving_people)
         
         fig, ax = gridworld.make_plot(show=False)
         ax.set_title("Final Gaze Position")
@@ -304,41 +306,48 @@ if __name__ == "__main__":
     input_shape = states.shape
     num_states = states.size
 
-    alg = NeuroEvolution(num_states)
-
-    epochs = 700
+    epochs = 150
     num_networks = 5
-    moving_people = True
+    moving_people = False
+    trials = 1
 
-    # alg._initialize_networks(4)
+    plt.ioff()
+    reward_list = []
+    for _ in range(trials):
+        gridworld = SIM2D()
+        alg = NeuroEvolution(num_states, num_networks)
+        best_reward = alg.do_learning(epochs, moving_people=moving_people)
+        reward_list.append(best_reward)
+        plt.plot(best_reward)
+
+    plt.show()
+
+    reward_over_trials = np.mean(reward_list, axis=0)
+    std_over_trials = np.std(reward_list, axis=0)
+    error_in_mean = std_over_trials / np.sqrt(trials)
+
+    # np.save("ne_learn_mean-10_trials.npy", reward_over_trials)
+    # np.save("ne_learn_err-10_trials.npy", error_in_mean)
+
     # print(alg.network_pool)
+    # fig, ax = plt.subplots(1,1)
+    # ax.plot(reward_over_trials)
+    # ax.fill_between(np.arange(0, epochs), reward_over_trials+error_in_mean, reward_over_trials-error_in_mean, alpha=0.4)
+    # ax.set_xlabel("epochs")
+    # ax.set_ylabel("reward")
+    # ax.set_title("Grid World Training Reward")
+    # plt.show()
 
-    train = True
+    # gridworld.make_plot()
 
-    if train:
-        best_reward = alg.do_learning(epochs, num_networks, moving_people=moving_people)
-        # print(alg.network_pool)
-        fig, ax = plt.subplots(1,1)
-        ax.plot(best_reward)
-        ax.set_xlabel("epochs")
-        ax.set_ylabel("reward")
-        ax.set_title("Grid World Training Reward")
-        plt.show()
+    plt.figure()
+    best_network = alg._select_networks(1, test=True)[0]
+    state_dict = best_network.state_dict()
+    alg.test(state_dict, moving_people=moving_people)
 
-        gridworld.make_plot()
-
-        plt.figure()
-        best_network = alg._select_networks(1, test=True)[0]
-        state_dict = best_network.state_dict()
-        alg.test(state_dict, moving_people=moving_people)
-
-        save = input("Save weights? (y/n) \n")
-        if save == "y":
-            np.save("best_state_dict.npy", np.array([state_dict]))
-            
-
-    else:
-        alg.test()
-
+    # save = input("Save weights? (y/n) \n")
+    # if save == "y":
+    #     np.save("best_state_dict.npy", np.array([state_dict]))
+        
 
 
