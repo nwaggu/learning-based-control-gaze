@@ -12,11 +12,12 @@ from custom_dataset import EmotionSpeechDataset
 import torchaudio
 from cnn import CNNetwork
 
-BATCH_SIZE = 128
-EPOCHS = 10
-audio = 'C:\\Users\\nnamd\\Documents\\Homework\\LBC Proejct\\emotion_network\\emotional_audio_dataset'
+BATCH_SIZE = 720
+EPOCHS = 500
+traing_location = 'C:\\Users\\nnamd\\Documents\\Homework\\LBC Proejct\\emotion_network\\emotional_audio_dataset\\Validation'
 SAMPLE_RATE = 28300
 NUM_SAMPLES=85000
+loss_totals = []
 
 def train_one_epoch(model, data_loader, loss_fn, optimizer, device):
     for inputs, targets in data_loader:
@@ -26,6 +27,7 @@ def train_one_epoch(model, data_loader, loss_fn, optimizer, device):
         predictions = model.forward(inputs)
         #print(predictions, targets)
         loss = loss_fn(predictions, targets)
+        loss_totals.append(loss)
         
         # Backpropogate loss and update weights
         optimizer.zero_grad()
@@ -62,7 +64,7 @@ if __name__ == "__main__":
         n_mels=64
     )
     
-    emo = EmotionSpeechDataset(audio, mel_spectrogram, SAMPLE_RATE, NUM_SAMPLES, device)
+    emo = EmotionSpeechDataset(traing_location, mel_spectrogram, SAMPLE_RATE, NUM_SAMPLES, device)
 
     #Create a Data Loader for the Train set
     train_data_loader = DataLoader(emo, batch_size=BATCH_SIZE)

@@ -2,6 +2,14 @@ from torch.utils.data import Dataset
 import os 
 import torchaudio
 import torch
+import opensmile
+
+
+smile = opensmile.Smile(
+    feature_set=opensmile.FeatureSet.emobase,
+    feature_level=opensmile.FeatureLevel.Functionals,
+)
+
 
 class EmotionSpeechDataset(Dataset):
 
@@ -36,9 +44,10 @@ class EmotionSpeechDataset(Dataset):
         #Less samples than expected
         signal = self._right_pad(signal)
         #Processing End
+        #df = smile.process_file(audio_sample_path)
+        #print(len(df.values[0]))
+        #output = self.df_to_tensor(df)
         signal = self.transformation(signal)
-        
-        #print(signal.shape[2])
         return signal, label 
 
     def _cut(self, signal):
@@ -69,37 +78,15 @@ class EmotionSpeechDataset(Dataset):
     
     def _get_audio_sample_path(self, file):
         path = os.path.join(self.audio_dir, file)
-        print(path)
         return path
 
     def _get_audio_sample_label(self, file):
-        return int(file[6:8])
+        return int(file[6:8])-1
+    
 
+    def df_to_tensor(self, df):
+        return torch.from_numpy(df.values).float().to(self.device)
 
-audio = 'C:\\Users\\nnamd\\Documents\\Homework\\LBC Proejct\\emotion_network\\emotional_audio_dataset'
-
-SAMPLE_RATE = 22050
-NUM_SAMPLES=22050
-
-
-if torch.cuda.is_available():
-    device = "cuda"
-else:
-    device = "cpu"
-print(device)
-
-mel_spectrogram = torchaudio.transforms.MelSpectrogram(
-    sample_rate=SAMPLE_RATE,
-    n_fft=1024,
-    hop_length=512,
-    n_mels=64
-)
-#ms = mel_spectrogram(signal)
-
-emo = EmotionSpeechDataset(audio, mel_spectrogram, SAMPLE_RATE, NUM_SAMPLES, device)
-print(f"There are {len(emo)} entries in the dataset")
-signal, label = emo[0]
-print(signal, label)
 
 
 

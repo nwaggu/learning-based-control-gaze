@@ -1,5 +1,6 @@
 import torch 
 from ffnn_Tutorial import FeedForwardNet, download_mnist_datasets
+from torchsummary import summary
 
 #What you want the dataset to guess
 #In our case it would be emotions probably!
@@ -37,9 +38,13 @@ if __name__ == "__main__":
 
     #load validation data!
     _, validation_data = download_mnist_datasets()
+    print(type(validation_data))
 
     #get a sample of data??
     input, target = validation_data[0][0], validation_data[0][1]
+    print("shape")
+    print(input.shape,target)
+    summary(feed_forward_net, input.shape)
 
     
     #make an inference?
