@@ -5,10 +5,12 @@ from sim2D import SIM2D
 
 ## ------------------------ global variables ------------------------ ##
 
-env = SIM2D()
+# env = SIM2D()
 
 # intialize q matrix to match grid world and action space dimensions, currently 10x12x5
-Q_matrix = np.zeros((env.grid_world[0], env.grid_world[1], len(env.actions)))
+def reset_Q_matrix(env):
+    Q_matrix = np.zeros((env.grid_world[0], env.grid_world[1], len(env.actions)))
+    return Q_matrix
 
 ## ------------------------ helper functions ------------------------ ##
 
@@ -45,7 +47,7 @@ def update_Q_qlearn(Q_matrix, state, action, next_state, reward, alpha=0.5, gamm
     Q_matrix[current_q_index] = current_q + alpha*(reward + gamma*max_next_q - current_q)
     return Q_matrix
 
-def visualizer():
+def visualizer(env):
     fig, ax = env.make_plot(show=False)
     ax.grid(which='both')
 
@@ -71,7 +73,7 @@ def cumulative_mean(array):
     return mean       
 
 ## ------------------------ learning algorithm ------------------------ ##
-def do_learning(algorithm_type, Q_matrix, epochs, alpha, gamma):
+def do_learning(env, Q_matrix, epochs, alpha, gamma):
     epoch_reward = []
     for learning_epoch in tqdm(range(epochs)):
         # reset the environment to the original configuration every episode
@@ -86,13 +88,7 @@ def do_learning(algorithm_type, Q_matrix, epochs, alpha, gamma):
             # do that again
             next_action = choose_action(Q_matrix, next_state)
             # use the current state and next state to update the Q matrix
-            if algorithm_type == "sarsa":
-                Q_matrix = update_Q_sarsa(Q_matrix, state, action, next_state, next_action, reward, alpha, gamma)
-            elif algorithm_type == "qlearn":
-                Q_matrix = update_Q_qlearn(Q_matrix, state, action, next_state, reward, alpha, gamma)
-            else:
-                print("probably misspelled the algorithm")
-                return
+            Q_matrix = update_Q_qlearn(Q_matrix, state, action, next_state, reward, alpha, gamma)
             # update loop params
             state = next_state
             action = next_action
@@ -103,7 +99,7 @@ def do_learning(algorithm_type, Q_matrix, epochs, alpha, gamma):
 
     return Q_matrix, epoch_reward
 
-def test(Q_matrix, visualizer=True):
+def test(Q_matrix, env, visualizer=True):
     state = env.reset_discrete()                        
     action = choose_action(Q_matrix, state)
     reward_over_time = []
@@ -127,32 +123,33 @@ def test(Q_matrix, visualizer=True):
 
 ## ------------------------ flight code ------------------------ ##
 
-alg = "qlearn"
-reward_list = []
-trials = 10
-epochs = 600
-alpha = 0.5
-gamma = 0.7
+if __name__ == "__main__":
+    alg = "qlearn"
+    reward_list = []
+    trials = 1
+    epochs = 700
+    alpha = 0.5
+    gamma = 0.7
 
-save_mean = True
+    save_mean = False
 
-for _ in range(trials):
-    env = SIM2D()
-    Q_matrix = np.zeros((env.grid_world[0], env.grid_world[1], len(env.actions)))
-    Q_matrix_final, reward = do_learning(alg, Q_matrix, epochs, alpha, gamma)
-    reward_list.append(cumulative_mean(reward))
+    for _ in range(trials):
+        env = SIM2D()
+        Q_matrix = reset_Q_matrix(env)
+        Q_matrix_final, reward = do_learning(env, Q_matrix, epochs, alpha, gamma)
+        reward_list.append(cumulative_mean(reward))
 
-reward_over_trials = np.mean(reward_list, axis=0)
-std_over_trials = np.std(reward_list, axis=0)
-error_in_mean = std_over_trials / np.sqrt(trials)
-plt.plot(reward_over_trials)
-plt.fill_between(np.arange(0, epochs), reward_over_trials+error_in_mean, reward_over_trials-error_in_mean, alpha=0.4)
-plt.show()
+    reward_over_trials = np.mean(reward_list, axis=0)
+    std_over_trials = np.std(reward_list, axis=0)
+    error_in_mean = std_over_trials / np.sqrt(trials)
+    plt.plot(reward_over_trials)
+    plt.fill_between(np.arange(0, epochs), reward_over_trials+error_in_mean, reward_over_trials-error_in_mean, alpha=0.4)
+    plt.show()
 
-if save_mean:
-    np.save("q_learn_mean-10_trials.npy", reward_over_trials)
-    np.save("q_learn_err-10_trials.npy", error_in_mean)
+    if save_mean:
+        np.save("q_learn_mean-10_trials.npy", reward_over_trials)
+        np.save("q_learn_err-10_trials.npy", error_in_mean)
 
-# test(Q_matrix_final)
+    test(Q_matrix_final, env)
 
 

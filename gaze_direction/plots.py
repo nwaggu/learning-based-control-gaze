@@ -2,11 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.style.use("seaborn-deep")
 
-qlearn_mean = np.load("q_learn_mean-10_trials.npy")
-qlearn_stdv = np.load("q_learn_err-10_trials.npy")
+qlearn_mean = np.load("results/q_learn_mean-10_trials.npy")
+qlearn_stdv = np.load("results/q_learn_err-10_trials.npy")
 
-ne_mean = np.load("ne_learn_mean-10_trials.npy")
-ne_stdv = np.load("ne_learn_err-10_trials.npy")
+ne_mean = np.load("results/ne_learn_mean-10_trials.npy")
+ne_stdv = np.load("results/ne_learn_err-10_trials.npy")
 
 plt.plot(qlearn_mean, label="Q-learning")
 plt.fill_between(np.arange(0, len(qlearn_mean)), qlearn_mean+qlearn_stdv, qlearn_mean-qlearn_stdv, alpha=0.4)

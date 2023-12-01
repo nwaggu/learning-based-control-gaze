@@ -102,7 +102,8 @@ class SIM2D:
         self._initialize_gaze_centered()
         # self._initialize_people()
         if moving_people:
-            self._initialize_moving_people()
+            # self._initialize_moving_people()
+            self._move_people()
         return deepcopy(self.return_state())
 
     def reset_discrete(self):
@@ -151,7 +152,7 @@ class SIM2D:
             if -self.fov[0]/2 < x < self.fov[0]/2 and -self.fov[1]/2 < y < self.fov[1]/2:
                 reward += 1
                 if speaking[i] == 1:
-                    reward += 2
+                    reward += 1
 
         return reward
 
@@ -180,7 +181,7 @@ class SIM2D:
             current_person_loc = self.people_loc[index][0:2]
             goal = self.moving_people[1:3,i]
             move_by = goal - current_person_loc
-            move_by /= 30
+            move_by /= 15
 
             self.people_loc[index][0:2] += move_by
 
@@ -209,7 +210,7 @@ class SIM2D:
         
         return deepcopy(self.return_state()), reward, terminated
 
-    def make_plot(self, show=True):
+    def make_plot(self, title="Gridworld Representation", show=True):
         fig, ax = plt.subplots(1,1)
         # plot the people, speakers circled in red
         ax.scatter(self.people_loc[:,0], self.people_loc[:,1], label="People")
@@ -232,7 +233,7 @@ class SIM2D:
         ax.set_xlim(-1, self.grid_world[0])
         ax.set_ylim(-1, self.grid_world[1])
 
-        ax.set_title("Gridworld Representation")
+        ax.set_title(title)
         ax.legend()
         
         if show:
@@ -255,8 +256,8 @@ class SIM2D:
 if __name__ == "__main__":
     mysim = SIM2D()
 
-    # reward = mysim._get_reward(mysim.gaze_pos)
-    # print(f"reward: {reward}")
+    reward = mysim._get_reward()
+    print(f"reward: {reward}")
 
     # point = mysim.gaze_pos - np.array([1,1])
     # print(mysim._is_inside_fov(point, mysim.gaze_pos))
