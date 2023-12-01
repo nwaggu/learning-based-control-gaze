@@ -152,7 +152,7 @@ class SIM2D:
             if -self.fov[0]/2 < x < self.fov[0]/2 and -self.fov[1]/2 < y < self.fov[1]/2:
                 reward += 1
                 if speaking[i] == 1:
-                    reward += 1
+                    reward += 2
 
         return reward
 
