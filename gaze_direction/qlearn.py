@@ -1,13 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 from sim2D import SIM2D
 
 ## ------------------------ global variables ------------------------ ##
 
-env = SIM2D()
+# env = SIM2D()
 
 # intialize q matrix to match grid world and action space dimensions, currently 10x12x5
-Q_matrix = np.zeros((env.grid_world[0], env.grid_world[1], len(env.actions)))
+def reset_Q_matrix(env):
+    Q_matrix = np.zeros((env.grid_world[0], env.grid_world[1], len(env.actions)))
+    return Q_matrix
 
 ## ------------------------ helper functions ------------------------ ##
 
@@ -21,9 +24,9 @@ def choose_action(Q_matrix, state, epsilon=0.1):
         action = np.random.randint(0,5)
     # otherwise, choose the action that corresponds to the highest Q value for that state
     else:
-        action = np.argmax(Q_matrix[state[0], state[1], :])
-
-    return action, env.actions[action]
+        action = np.argmax(Q_matrix[int(state[0]), int(state[1]), :])
+        
+    return action
 
 def update_Q_sarsa(Q_matrix, state, action, next_state, next_action, reward, alpha=0.5, gamma=0.8):
     current_q_index = state[0], state[1], action
@@ -36,15 +39,15 @@ def update_Q_sarsa(Q_matrix, state, action, next_state, next_action, reward, alp
     return Q_matrix
 
 def update_Q_qlearn(Q_matrix, state, action, next_state, reward, alpha=0.5, gamma=0.8):
-    current_q_index = state[0], state[1], action
+    current_q_index = int(state[0]), int(state[1]), action
     current_q = Q_matrix[current_q_index]
 
-    max_next_q = np.max(Q_matrix[next_state[0], next_state[1], :])
+    max_next_q = np.max(Q_matrix[int(next_state[0]), int(next_state[1]), :])
 
     Q_matrix[current_q_index] = current_q + alpha*(reward + gamma*max_next_q - current_q)
     return Q_matrix
 
-def visualizer():
+def visualizer(env):
     fig, ax = env.make_plot(show=False)
     ax.grid(which='both')
 
@@ -64,64 +67,89 @@ def visualizer():
 
     plt.show()
 
+def cumulative_mean(array):
+    cumulative_sum = np.cumsum(array, axis=0)
+    mean = cumulative_sum / np.arange(1,len(array)+1)
+    return mean       
+
 ## ------------------------ learning algorithm ------------------------ ##
-def do_learning(algorithm_type, Q_matrix, epochs, alpha, gamma):
+def do_learning(env, Q_matrix, epochs, alpha, gamma):
     epoch_reward = []
-    for learning_epoch in range(epochs):
+    for learning_epoch in tqdm(range(epochs)):
         # reset the environment to the original configuration every episode
         state = env.reset_discrete()       
         # choose an initial state-action pair                   
-        action, action_str = choose_action(Q_matrix, state)
+        action = choose_action(Q_matrix, state)
 
         time_step_reward = 0
-        for time_step in range(20):
+        for time_step in range(50):
             # take the chosen action and return the associated reward and new state
-            next_state, reward = env.step_discrete(action_str)
+            next_state, reward = env.step_discrete(action)
             # do that again
-            next_action, next_action_str = choose_action(Q_matrix, next_state)
+            next_action = choose_action(Q_matrix, next_state)
             # use the current state and next state to update the Q matrix
-            if algorithm_type == "sarsa":
-                Q_matrix = update_Q_sarsa(Q_matrix, state, action, next_state, next_action, reward, alpha, gamma)
-            elif algorithm_type == "qlearn":
-                Q_matrix = update_Q_qlearn(Q_matrix, state, action, next_state, reward, alpha, gamma)
-            else:
-                print("probably misspelled the algorithm")
-                return
+            Q_matrix = update_Q_qlearn(Q_matrix, state, action, next_state, reward, alpha, gamma)
             # update loop params
             state = next_state
             action = next_action
-            action_str = next_action_str
-
-            time_step_reward+=reward
+            
+            time_step_reward+= reward
 
         epoch_reward.append(time_step_reward)
 
     return Q_matrix, epoch_reward
 
+def test(Q_matrix, env, visualizer=True):
+    state = env.reset_discrete()                        
+    action = choose_action(Q_matrix, state)
+    reward_over_time = []
+    for time_step in range(10):
+        state, reward = env.step_discrete(action)
+        action = choose_action(Q_matrix, state, epsilon=0)
+
+        reward_over_time.append(reward)
+        if visualizer:
+            plt.ion()
+            plt.plot(reward_over_time)
+            plt.title("Immediate Reward")
+            plt.xlabel("Time Steps")
+            plt.ylabel("Reward")
+            plt.pause(0.001)
+            plt.show()
+
+    plt.ioff()
+    env.make_plot()
+
+
 ## ------------------------ flight code ------------------------ ##
 
-alg = "qlearn"
-reward_list = []
-trials = 1
-epochs = 5000
-alpha = 0.5
-gamma = 0.7
+if __name__ == "__main__":
+    alg = "qlearn"
+    reward_list = []
+    trials = 1
+    epochs = 700
+    alpha = 0.5
+    gamma = 0.7
 
-Q_matrix_final, reward = do_learning(alg, Q_matrix, epochs, alpha, gamma)
-# print(Q_matrix_final, reward)
+    save_mean = False
 
-visualizer()
+    for _ in range(trials):
+        env = SIM2D()
+        Q_matrix = reset_Q_matrix(env)
+        Q_matrix_final, reward = do_learning(env, Q_matrix, epochs, alpha, gamma)
+        reward_list.append(cumulative_mean(reward))
 
-plt.plot(reward)
-plt.show()
+    reward_over_trials = np.mean(reward_list, axis=0)
+    std_over_trials = np.std(reward_list, axis=0)
+    error_in_mean = std_over_trials / np.sqrt(trials)
+    plt.plot(reward_over_trials)
+    plt.fill_between(np.arange(0, epochs), reward_over_trials+error_in_mean, reward_over_trials-error_in_mean, alpha=0.4)
+    plt.show()
 
-# q_long = Q_matrix.reshape(env.grid_world[0]*env.grid_world[1], len(env.actions))
-# print(np.argmax(q_long, axis=1))
+    if save_mean:
+        np.save("q_learn_mean-10_trials.npy", reward_over_trials)
+        np.save("q_learn_err-10_trials.npy", error_in_mean)
 
-# print(np.argmax(Q_matrix, axis=2)[1,0])
+    test(Q_matrix_final, env)
 
-# # find the best action of the point (0,1)
-# print(np.argmax(Q_matrix[0,0,:]))
-
-# print(Q_matrix[:,:,0])
 

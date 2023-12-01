@@ -77,5 +77,3 @@ if run_neuroev:
     print(f"Gaze should move from {alg.starting_gaze_position} to {best_direction_to_look}, a change of {dxdy}")
 
 
-
-
