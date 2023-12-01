@@ -10,11 +10,11 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 
-plt.ion()
+# plt.ion()
 
 ## ------------- INITIALIZE GRIDWORLD ------------- ##
 from sim2D import SIM2D
-gridworld = SIM2D()
+# env = SIM2D()
 
 ## ------------- INITIALIZE PYTORCH ------------- ##
 device = (
@@ -46,12 +46,33 @@ class NeuralNetwork(nn.Module):
         output = self.linear_relu_stack(x)
         return output
 
-class NeuroEvolution():
-    def __init__(self, num_states) -> None:
+class NeuroEvolution(SIM2D):
+    def __init__(self, num_networks) -> None:
 
-        self.num_states = num_states
+        self.env = SIM2D()
+        states = self.env.return_state()
+        self.num_states = states.size
         self.network_pool = None
-    
+        self._initialize_networks(num_networks)
+
+    def _generate_networks(self, num_networks):
+        self.network_pool = np.zeros((num_networks, 2), dtype=object)
+        for i, _ in enumerate(self.network_pool):
+            self.network_pool[i,0] = NeuralNetwork(self.num_states)
+
+    def _initialize_networks(self, num_networks):
+        """Runs each network once to initialize their fitnesses"""
+        self._generate_networks(num_networks)
+        for i, val in enumerate(self.network_pool):
+            # "val" is np.array of [network, fitness]
+            network = val[0]
+
+            state = self.env.reset()
+            action = self.select_action(network, state)
+
+            reward = self._run(state, action, network)
+            self.network_pool[i,1] = reward
+
     def _rand_matrix_index(self, matrix):
         """ Mutation and crossover helper function.
             Returns (list) a random valid index within a matrix"""
@@ -146,24 +167,6 @@ class NeuroEvolution():
         state_dict1[key] = weight_matrix1 
         child.load_state_dict(state_dict1)
         return child
-    
-    def _generate_networks(self, num_networks):
-        self.network_pool = np.zeros((num_networks, 2), dtype=object)
-        for i, _ in enumerate(self.network_pool):
-            self.network_pool[i,0] = NeuralNetwork(self.num_states)
-
-    def _initialize_networks(self, num_networks):
-        """Runs each network once to initialize their fitnesses"""
-        self._generate_networks(num_networks)
-        for i, val in enumerate(self.network_pool):
-            # "val" is np.array of [network, fitness]
-            network = val[0]
-
-            state = gridworld.reset()
-            action = self.select_action(network, state)
-
-            reward = self._run(state, action, network)
-            self.network_pool[i,1] = reward
 
     def _select_networks(self, num_returned, epsilon=0.1, test=False):
         """Either selects the n best networks from the pool or choses n random networks from the pool.
@@ -201,7 +204,7 @@ class NeuroEvolution():
         """Adds new networks and corresponding fitness to self.network_pool.
             Inputs: lists of the networks and fitnesses to add"""
         for i, val in enumerate(network):
-            alg.network_pool = np.append(alg.network_pool, [[val, fitness[i]]], axis=0)
+            self.network_pool = np.append(self.network_pool, [[val, fitness[i]]], axis=0)
 
     def select_action(self, network, state, epsilon=0.1):
         """in the gridworld, actions are currently (11/22) move by (Δx, Δy). Going 
@@ -209,7 +212,7 @@ class NeuroEvolution():
         prob = np.random.uniform()
         # ε% of the time, move randomly
         if prob < epsilon:
-            action = gridworld.sample_action_continuous()
+            action = self.env.sample_action_continuous()
             action = torch.tensor([action], device=device, dtype=torch.float32, requires_grad=False)
         # otherwise, query the network
         else:
@@ -226,7 +229,7 @@ class NeuroEvolution():
         time_step_reward = 0
         reward_over_time = []
         for time_step in range(max_steps):
-            state, reward, terminated = gridworld.step_continuous(action, moving_people)
+            state, reward, terminated = self.env.step_continuous(action, moving_people)
             action = self.select_action(network, state, epsilon=epsilon)
 
             time_step_reward += reward
@@ -237,6 +240,7 @@ class NeuroEvolution():
                 break
 
             elif visualizer:
+                plt.ion()
                 plt.plot(reward_over_time)
                 plt.title("Immediate Reward")
                 plt.xlabel("Time Steps")
@@ -244,15 +248,14 @@ class NeuroEvolution():
                 plt.pause(0.001)
                 plt.show()
 
-        # if visualizer:
-        #     plt.ioff()
-        #     gridworld.make_plot()
+        if visualizer:
+            plt.ioff()
+            self.env.make_plot(title="Final Gaze Position")
 
         return time_step_reward
     
-    def do_learning(self, epochs, num_networks, moving_people=False):
+    def do_learning(self, epochs, moving_people=False):
         """Runs a genetic algorithm to modify the NN weights"""
-        self._initialize_networks(num_networks)
         best_epoch_reward = []
         for learning_epoch in tqdm(range(epochs)):
             # pick network using epsilon-greedy alg
@@ -266,7 +269,7 @@ class NeuroEvolution():
 
             # use network on agent for T steps
             for network in [network1, network2, child]:
-                state = gridworld.reset(moving_people=moving_people)
+                state = self.env.reset(moving_people=moving_people)
                 action = self.select_action(network, state)
                 # evaluate network performance
                 reward = self._run(state, action, network, moving_people=moving_people)
@@ -287,58 +290,55 @@ class NeuroEvolution():
         
         network.load_state_dict(state_dict)
         
-        state = gridworld.reset(moving_people)
+        state = self.env.reset(moving_people)
         action = self.select_action(network, state, epsilon=0)
-        test_reward = self._run(state, action, network, max_steps=20, visualizer=True, epsilon=0, moving_people=moving_people)
-        
-        fig, ax = gridworld.make_plot(show=False)
-        ax.set_title("Final Gaze Position")
-        plt.show()
-
+        test_reward = self._run(state, action, network, max_steps=70, visualizer=True, epsilon=0, moving_people=moving_people)
+    
         return test_reward
 
 ## ------------- FLIGHT CODE ------------- ##
 if __name__ == "__main__":
-
-    states = gridworld.return_state()
-    input_shape = states.shape
-    num_states = states.size
-
-    alg = NeuroEvolution(num_states)
-
-    epochs = 700
+    epochs = 200
     num_networks = 5
-    moving_people = True
+    moving_people = False
+    trials = 1
 
-    # alg._initialize_networks(4)
+    reward_list = []
+    for _ in range(trials):
+        # env = SIM2D()
+        alg = NeuroEvolution(num_networks)
+        best_reward = alg.do_learning(epochs, moving_people)
+        reward_list.append(best_reward)
+        plt.plot(best_reward)
+
+    plt.show()
+
+    reward_over_trials = np.mean(reward_list, axis=0)
+    std_over_trials = np.std(reward_list, axis=0)
+    error_in_mean = std_over_trials / np.sqrt(trials)
+
+    # np.save("ne_learn_mean-10_trials.npy", reward_over_trials)
+    # np.save("ne_learn_err-10_trials.npy", error_in_mean)
+
     # print(alg.network_pool)
+    # fig, ax = plt.subplots(1,1)
+    # ax.plot(reward_over_trials)
+    # ax.fill_between(np.arange(0, epochs), reward_over_trials+error_in_mean, reward_over_trials-error_in_mean, alpha=0.4)
+    # ax.set_xlabel("epochs")
+    # ax.set_ylabel("reward")
+    # ax.set_title("Grid World Training Reward")
+    # plt.show()
 
-    train = True
+    alg.env.make_plot()
 
-    if train:
-        best_reward = alg.do_learning(epochs, num_networks, moving_people=moving_people)
-        # print(alg.network_pool)
-        fig, ax = plt.subplots(1,1)
-        ax.plot(best_reward)
-        ax.set_xlabel("epochs")
-        ax.set_ylabel("reward")
-        ax.set_title("Grid World Training Reward")
-        plt.show()
+    plt.figure()
+    best_network = alg._select_networks(1, test=True)[0]
+    state_dict = best_network.state_dict()
+    alg.test(state_dict, moving_people)
 
-        gridworld.make_plot()
-
-        plt.figure()
-        best_network = alg._select_networks(1, test=True)[0]
-        state_dict = best_network.state_dict()
-        alg.test(state_dict, moving_people=moving_people)
-
-        save = input("Save weights? (y/n) \n")
-        if save == "y":
-            np.save("best_state_dict.npy", np.array([state_dict]))
-            
-
-    else:
-        alg.test()
-
+    # save = input("Save weights? (y/n) \n")
+    # if save == "y":
+    #     np.save("best_state_dict.npy", np.array([state_dict]))
+        
 
 

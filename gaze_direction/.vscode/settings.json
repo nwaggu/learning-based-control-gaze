@@ -1,0 +1,4 @@
+{
+    "cmake.configureOnOpen": true,
+    "cmake.sourceDirectory": "C:/Users/alicl/Documents/GitHub/learning-based-control-gaze/gaze_direction/lightweight-human-pose-estimation-3d-demo.pytorch/pose_extractor"
+}
