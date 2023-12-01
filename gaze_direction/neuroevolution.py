@@ -51,7 +51,28 @@ class NeuroEvolution():
 
         self.num_states = num_states
         self.network_pool = None
-    
+        self._initialize_networks(num_networks)
+        self.env._initialize_gaze_centered()
+        self.starting_gaze_position = self.env.gaze_pos
+
+    def _generate_networks(self, num_networks):
+        self.network_pool = np.zeros((num_networks, 2), dtype=object)
+        for i, _ in enumerate(self.network_pool):
+            self.network_pool[i,0] = NeuralNetwork(self.num_states)
+
+    def _initialize_networks(self, num_networks):
+        """Runs each network once to initialize their fitnesses"""
+        self._generate_networks(num_networks)
+        for i, val in enumerate(self.network_pool):
+            # "val" is np.array of [network, fitness]
+            network = val[0]
+
+            state = self.env.reset()
+            action = self.select_action(network, state)
+
+            reward = self._run(state, action, network)
+            self.network_pool[i,1] = reward
+
     def _rand_matrix_index(self, matrix):
         """ Mutation and crossover helper function.
             Returns (list) a random valid index within a matrix"""
