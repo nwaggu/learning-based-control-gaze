@@ -10,31 +10,44 @@ from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pack_sequence
 from custom_dataset import EmotionSpeechDataset
 import torchaudio
-from cnn import CNNetwork
+from cnn_oone import CNNetwork1D
+import matplotlib.pyplot as plt
 
-BATCH_SIZE = 720
-EPOCHS = 500
+
+BATCH_SIZE = 32
+EPOCHS = 50
 traing_location = 'C:\\Users\\nnamd\\Documents\\Homework\\LBC Proejct\\emotion_network\\emotional_audio_dataset\\Validation'
 SAMPLE_RATE = 28300
 NUM_SAMPLES=85000
 loss_totals = []
+highest_lossses = []
+accuracy_totals = []
 
 def train_one_epoch(model, data_loader, loss_fn, optimizer, device):
+    correct = 0
+    softmax = nn.Softmax(dim=1)
+    highest_loss = 0
     for inputs, targets in data_loader:
         inputs, targets = inputs.to(device), targets.to(device)
-        
+
         #Calculate loss
-        predictions = model.forward(inputs)
+        logits = model.forward(inputs)
         #print(predictions, targets)
-        loss = loss_fn(predictions, targets)
+        loss = loss_fn(logits, targets)
+        if highest_loss < loss:
+            highest_loss = loss
         loss_totals.append(loss)
-        
         # Backpropogate loss and update weights
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-        print(f"Loss: {loss.item()}")
+        output = softmax(logits)
+        output = torch.argmax(output,dim=1)
+        correct += torch.sum(output==targets).item()
+    accuracy = 100 * correct / 720
+    print("Accuracy = {}".format(accuracy))
+    accuracy_totals.append(accuracy)
+    highest_lossses.append(highest_loss)
 
 def train(model, data_loader, loss_fn, optimizer, device, epochs):
     for i in range(epochs):
@@ -42,7 +55,7 @@ def train(model, data_loader, loss_fn, optimizer, device, epochs):
         train_one_epoch(model, data_loader, loss_fn, optimizer, device)
         print("----------------------------------------------")
     print("Training is done")
-    pass
+    
 
 
 
@@ -70,7 +83,7 @@ if __name__ == "__main__":
     train_data_loader = DataLoader(emo, batch_size=BATCH_SIZE)
 
     #build model
-    cnn = CNNetwork().to(device)
+    cnn = CNNetwork1D().to(device)
 
     #instantiate loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
@@ -80,5 +93,9 @@ if __name__ == "__main__":
     train(cnn, train_data_loader, loss_fn, optimizer, device, EPOCHS)
 
     #store model
-    torch.save(cnn.state_dict(), "cnn.pth")
+    torch.save(cnn.state_dict(), "test.pth")
     print("Model trained and stored at cnn.pth")
+    t = list(range(0,EPOCHS))
+    plt.plot(t, accuracy_totals, color='b')
+    plt.show()
+    print(accuracy_totals)

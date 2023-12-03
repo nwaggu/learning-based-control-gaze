@@ -7,7 +7,7 @@ import opensmile
 
 smile = opensmile.Smile(
     feature_set=opensmile.FeatureSet.emobase,
-    feature_level=opensmile.FeatureLevel.Functionals,
+    feature_level=opensmile.FeatureLevel.LowLevelDescriptors,
 )
 
 
@@ -32,23 +32,24 @@ class EmotionSpeechDataset(Dataset):
         file = folder[index]
         audio_sample_path = self._get_audio_sample_path(file)
         label = self._get_audio_sample_label(file)
-        signal, sr = torchaudio.load(audio_sample_path)
-        signal = signal.to(self.device)
+        #signal, sr = torchaudio.load(audio_sample_path)
+        #signal = signal.to(self.device)
         #Extra processing if necessary
         #Confirm sample rate
-        signal = self._resample(signal, sr)
+        #signal = self._resample(signal, sr)
         #Combine channels
-        signal = self._mix_down(signal)
+        #signal = self._mix_down(signal)
         #More samples than expected
-        signal = self._cut(signal)
+        #signal = self._cut(signal)
         #Less samples than expected
-        signal = self._right_pad(signal)
+        #signal = self._right_pad(signal)
         #Processing End
-        #df = smile.process_file(audio_sample_path)
+        df = smile.process_file(audio_sample_path)
         #print(len(df.values[0]))
-        #output = self.df_to_tensor(df)
-        signal = self.transformation(signal)
-        return signal, label 
+        output = self.df_to_tensor(df)
+        #signal = self.transformation(signal)
+        print(df)
+        return output, label 
 
     def _cut(self, signal):
         if signal.shape[1] > self.number_of_samples:

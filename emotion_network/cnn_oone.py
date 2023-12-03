@@ -48,7 +48,7 @@ class CNNetwork1D(nn.Module):
         )
         self.conv4 = nn.Sequential(
             nn.Conv1d(
-                in_channels=32,
+                in_channels=64,
                 out_channels=128,
                 kernel_size=3,
                 stride=1,
@@ -58,21 +58,18 @@ class CNNetwork1D(nn.Module):
             nn.MaxPool1d(kernel_size=2)
         )
         self.flatten = nn.Flatten(start_dim=1)
-        self.linear = nn.Linear(4032, 8)
+        self.linear = nn.Linear(8064, 8)
         self.softmax = nn.Softmax(dim=1)
     
     def forward(self, input_data):
         x = self.conv1(input_data)
-        print(x.shape)
         x = self.conv2(x)
-        print(x.shape)
         x = self.conv3(x)
-        print(x.shape)
         x = self.conv4(x)
         x = self.flatten(x)
         logits = self.linear(x)
-        predictions = self.softmax(logits)
-        return predictions
+        #predictions = self.softmax(logits)
+        return logits
 
 
 if __name__ =="__main__":
