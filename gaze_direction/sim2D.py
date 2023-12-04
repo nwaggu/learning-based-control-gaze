@@ -110,8 +110,8 @@ class SIM2D:
         self._initialize_gaze_centered()
         # self._initialize_people()
         if moving_people:
-            # self._initialize_moving_people()
-            self._move_people()
+            self._initialize_moving_people()
+            # self._move_people()
         return deepcopy(self.return_state())
 
     def reset_discrete(self):
@@ -189,7 +189,7 @@ class SIM2D:
             current_person_loc = self.people_loc[index][0:2]
             goal = self.moving_people[1:3,i]
             move_by = goal - current_person_loc
-            move_by /= 15
+            move_by /= 10
 
             self.people_loc[index][0:2] += move_by
 
@@ -244,10 +244,10 @@ class SIM2D:
         ax.set_ylim(-1, self.grid_world[1])
 
         ax.set_title(title)
-        ax.legend()
         
         if show:
             plt.show()
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
         return ax
     
@@ -266,16 +266,16 @@ class SIM2D:
 if __name__ == "__main__":
     mysim = SIM2D()
 
-    reward = mysim._get_reward()
-    print(f"reward: {reward}")
+    # reward = mysim._get_reward()
+    # print(f"reward: {reward}")
 
     # point = mysim.gaze_pos - np.array([1,1])
     # print(mysim._is_inside_fov(point, mysim.gaze_pos))
 
     mysim.make_plot()
-    # print(mysim.moving_people)
-    # mysim.step_continuous([1,1], moving_people=True)
-    # mysim.make_plot()
+    print(mysim.moving_people)
+    mysim.step_continuous([1,1], moving_people=True)
+    mysim.make_plot()
 
     # print(mysim.gaze_pos, mysim._get_reward())
     # mysim.make_plot()

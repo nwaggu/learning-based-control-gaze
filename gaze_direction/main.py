@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import torch
+from matplotlib.animation import FuncAnimation
 
 import qlearn
 from neuroevolution import NeuroEvolution, NeuralNetwork
@@ -50,6 +50,7 @@ if run_neuroev:
     epochs = 150
     num_networks = 5
     moving_people = False
+    make_gif = True
 
     for _ in range(trials):
         alg = NeuroEvolution(num_networks)
@@ -67,7 +68,28 @@ if run_neuroev:
         # can use best_network to determine where to move given a state, or just take the final gaze pose
     best_network = alg._select_networks(1, test=True)[0]
     state_dict = best_network.state_dict()
-    alg.test(state_dict, moving_people)
+    reward, reward_list, gaze_list, people_list = alg.test(state_dict, moving_people=True, track_gaze=True, max_steps=50)
+
+    if make_gif:
+        fig, ax = plt.subplots(1,2, figsize=(8,4))
+        plt.tight_layout()
+        time_steps = np.arange(0, len(reward_list))
+        def animate(i):
+            ax[0].clear()
+            ax[1].clear()
+            alg.env.people_loc = people_list[i]
+            alg.env.gaze_pos = gaze_list[i]
+            alg.env.make_plot(ax[1])
+            ax[0].plot(time_steps[0:i], reward_list[0:i])
+            ax[0].set_ylim([-2, 9])
+            ax[0].set_title("Reward")
+            ax[0].set_xlabel("Time Steps")
+            ax[1].legend(loc='upper right')
+
+        # run the animation
+        ani = FuncAnimation(fig, animate, len(gaze_list), repeat=False)
+        plt.show()
+        ani.save('gaze_direction/results/test.gif')
 
     if save_mean:
         np.save("q_learn_mean-10_trials.npy", reward_over_trials)

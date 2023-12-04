@@ -231,14 +231,17 @@ class NeuroEvolution(SIM2D):
         time_step_reward = 0
         reward_over_time = []
         gaze_positions = []
+        ppl_locations = []
         gaze_positions.append(self.env.gaze_pos.tolist())
         reward_over_time.append(self.env._get_reward())
+        ppl_locations.append(self.env.people_loc)
 
         for time_step in range(max_steps):
             state, reward, terminated = self.env.step_continuous(action, moving_people)
             action = self.select_action(network, state, epsilon=epsilon)
             if track_gaze:
                 gaze_positions.append(np.round(self.env.gaze_pos,3).tolist())
+                ppl_locations.append(self.env.people_loc)
             time_step_reward += reward
             reward_over_time.append(reward)
 
@@ -263,7 +266,7 @@ class NeuroEvolution(SIM2D):
             self.env.make_plot(title="Final Gaze Position")
 
         if track_gaze:
-            return time_step_reward, reward_over_time, gaze_positions
+            return time_step_reward, reward_over_time, gaze_positions, ppl_locations
         
         return time_step_reward
     
@@ -307,8 +310,8 @@ class NeuroEvolution(SIM2D):
         action = self.select_action(network, state, epsilon=0)
 
         if track_gaze:
-            test_reward, reward_list, gaze_list = self._run(state, action, network, max_steps=max_steps, visualizer=True, epsilon=0, moving_people=moving_people, track_gaze=track_gaze)
-            return test_reward, reward_list, gaze_list
+            test_reward, reward_list, gaze_list, ppl_list = self._run(state, action, network, max_steps=max_steps, visualizer=True, epsilon=0, moving_people=moving_people, track_gaze=track_gaze)
+            return test_reward, reward_list, gaze_list, ppl_list
         else:
             test_reward = self._run(state, action, network, max_steps=max_steps, visualizer=True, epsilon=0, moving_people=moving_people)
             return test_reward
@@ -350,7 +353,7 @@ if __name__ == "__main__":
     # plt.figure()
     best_network = alg._select_networks(1, test=True)[0]
     state_dict = best_network.state_dict()
-    reward, reward_list, gaze_list = alg.test(state_dict, moving_people, track_gaze=True, max_steps=50)
+    reward, reward_list, gaze_list, people_list = alg.test(state_dict, moving_people, track_gaze=True, max_steps=50)
 
     # save = input("Save weights? (y/n) \n")
     # if save == "y":
@@ -361,6 +364,7 @@ if __name__ == "__main__":
     def animate(i):
         ax[0].clear()
         ax[1].clear()
+        alg.env.people_loc = people_list[i]
         alg.env.gaze_pos = gaze_list[i]
         alg.env.make_plot(ax[1])
         ax[0].plot(time_steps[0:i], reward_list[0:i])
