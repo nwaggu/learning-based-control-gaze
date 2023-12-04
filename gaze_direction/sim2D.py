@@ -4,7 +4,7 @@ from matplotlib.patches import Rectangle
 from copy import deepcopy
 
 class SIM2D:
-    def __init__(self) -> None:
+    def __init__(self, x_locations=None, y_locations=None) -> None:
 
         # initialize grid world
         self.grid_world = (12, 10)  # bounds of world
@@ -18,11 +18,11 @@ class SIM2D:
 
         # initialize people locations and speakers
         self.speaker_fraction = 1/3
-        self.num_people = 10
+        self.num_people = None
         self.num_speakers = None
         self.people_loc = None
         self.moving_people = None
-        self._initialize_people()
+        self._initialize_people(x_locations, y_locations)
         self._initialize_moving_people()
         
     def _initialize_gaze_random(self):
@@ -35,20 +35,28 @@ class SIM2D:
         y = float(self.grid_world[1]/2)
         self.gaze_pos = np.array([x,y])
     
-    def _initialize_people(self):
+    def _initialize_people(self, x_locations=None, y_locations=None):
         """Randomizes the number of people present and the number of speakers
             Creates those people as points on a gridworld"""
         # self.num_people = np.random.randint(5, 20)
+        if x_locations is not None:
+            self.num_people = len(x_locations)
+        else:
+            self.num_people = 10
+
         self.num_speakers = int(self.num_people*self.speaker_fraction)
-        self._initialize_locations()
+        self._initialize_locations(x_locations, y_locations)
         self._initialize_speakers()
 
-    def _initialize_locations(self):
+    def _initialize_locations(self, x_locations=None, y_locations=None):
         """Creates self.num_people number of random points within the total field of view"""
-        x_locations = np.random.uniform(0, self.grid_world[0]-1, size=(self.num_people, 1))
-        y_locations = np.random.uniform(0, self.grid_world[1]-1, size=(self.num_people, 1))
+        if x_locations is None:
+            x_locations = np.random.uniform(0, self.grid_world[0]-1, size=(self.num_people, 1))
+        if y_locations is None:
+            y_locations = np.random.uniform(0, self.grid_world[1]-1, size=(self.num_people, 1))
+
         is_speaker = np.zeros((self.num_people, 1))
-        self.people_loc = np.hstack([x_locations, y_locations, is_speaker])
+        self.people_loc = np.column_stack([x_locations, y_locations, is_speaker])
         
     def _initialize_speakers(self):
         """Grabs self.num_speakers number of random points from the people locations
@@ -210,8 +218,10 @@ class SIM2D:
         
         return deepcopy(self.return_state()), reward, terminated
 
-    def make_plot(self, title="Gridworld Representation", show=True):
-        fig, ax = plt.subplots(1,1)
+    def make_plot(self, ax=None, title="Gridworld Representation", show=True):
+        if ax is None:
+            fig, ax = plt.subplots(1,1)
+
         # plot the people, speakers circled in red
         ax.scatter(self.people_loc[:,0], self.people_loc[:,1], label="People")
         speakers_x = []
@@ -239,7 +249,7 @@ class SIM2D:
         if show:
             plt.show()
 
-        return fig, ax
+        return ax
     
     def plot_state(self):
         fig, ax = plt.subplots(1,1)

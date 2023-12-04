@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 from tqdm import tqdm
 import copy
 
@@ -224,15 +225,20 @@ class NeuroEvolution(SIM2D):
 
         return action[0]
     
-    def _run(self, state, action, network, max_steps=50, visualizer=False, epsilon=0.1, moving_people=False):
+    def _run(self, state, action, network, max_steps=50, visualizer=False, epsilon=0.1, moving_people=False, track_gaze=False):
         """Runs a network for T time steps given an initial state and action. 
             Returns the total reward accumulated over T timesteps"""
         time_step_reward = 0
         reward_over_time = []
+        gaze_positions = []
+        gaze_positions.append(self.env.gaze_pos.tolist())
+        reward_over_time.append(self.env._get_reward())
+
         for time_step in range(max_steps):
             state, reward, terminated = self.env.step_continuous(action, moving_people)
             action = self.select_action(network, state, epsilon=epsilon)
-
+            if track_gaze:
+                gaze_positions.append(np.round(self.env.gaze_pos,3).tolist())
             time_step_reward += reward
             reward_over_time.append(reward)
 
@@ -242,10 +248,13 @@ class NeuroEvolution(SIM2D):
 
             elif visualizer:
                 plt.ion()
+                plt.figure(1)
+                
                 plt.plot(reward_over_time)
                 plt.title("Immediate Reward")
                 plt.xlabel("Time Steps")
                 plt.ylabel("Reward")
+
                 plt.pause(0.001)
                 plt.show()
 
@@ -253,6 +262,9 @@ class NeuroEvolution(SIM2D):
             plt.ioff()
             self.env.make_plot(title="Final Gaze Position")
 
+        if track_gaze:
+            return time_step_reward, reward_over_time, gaze_positions
+        
         return time_step_reward
     
     def do_learning(self, epochs, moving_people=False):
@@ -282,7 +294,7 @@ class NeuroEvolution(SIM2D):
             best_epoch_reward.append(max(self.network_pool[:,1]))
         return best_epoch_reward
     
-    def test(self, state_dict=None, moving_people=False):
+    def test(self, state_dict=None, moving_people=False, track_gaze=False, max_steps=20):
         """Loads the best state dictionary and runs it on a reset environment"""
         network = NeuralNetwork(self.num_states).to(device)
 
@@ -293,53 +305,72 @@ class NeuroEvolution(SIM2D):
         
         state = self.env.reset(moving_people)
         action = self.select_action(network, state, epsilon=0)
-        test_reward = self._run(state, action, network, max_steps=70, visualizer=True, epsilon=0, moving_people=moving_people)
-    
-        return test_reward
+
+        if track_gaze:
+            test_reward, reward_list, gaze_list = self._run(state, action, network, max_steps=max_steps, visualizer=True, epsilon=0, moving_people=moving_people, track_gaze=track_gaze)
+            return test_reward, reward_list, gaze_list
+        else:
+            test_reward = self._run(state, action, network, max_steps=max_steps, visualizer=True, epsilon=0, moving_people=moving_people)
+            return test_reward
 
 ## ------------- FLIGHT CODE ------------- ##
 if __name__ == "__main__":
-    epochs = 200
+    epochs = 150
     num_networks = 5
     moving_people = False
     trials = 1
+    save_results = False
+    plot_results = False
 
     reward_list = []
     for _ in range(trials):
-        # env = SIM2D()
         alg = NeuroEvolution(num_networks)
         best_reward = alg.do_learning(epochs, moving_people)
         reward_list.append(best_reward)
-        plt.plot(best_reward)
-
-    plt.show()
 
     reward_over_trials = np.mean(reward_list, axis=0)
     std_over_trials = np.std(reward_list, axis=0)
     error_in_mean = std_over_trials / np.sqrt(trials)
 
-    # np.save("ne_learn_mean-10_trials.npy", reward_over_trials)
-    # np.save("ne_learn_err-10_trials.npy", error_in_mean)
+    if save_results:
+        np.save("ne_learn_mean-10_trials.npy", reward_over_trials)
+        np.save("ne_learn_err-10_trials.npy", error_in_mean)
 
-    # print(alg.network_pool)
-    # fig, ax = plt.subplots(1,1)
-    # ax.plot(reward_over_trials)
-    # ax.fill_between(np.arange(0, epochs), reward_over_trials+error_in_mean, reward_over_trials-error_in_mean, alpha=0.4)
-    # ax.set_xlabel("epochs")
-    # ax.set_ylabel("reward")
-    # ax.set_title("Grid World Training Reward")
-    # plt.show()
+    if plot_results:
+        fig, ax = plt.subplots(1,1)
+        ax.plot(reward_over_trials)
+        ax.fill_between(np.arange(0, epochs), reward_over_trials+error_in_mean, reward_over_trials-error_in_mean, alpha=0.4)
+        ax.set_xlabel("epochs")
+        ax.set_ylabel("reward")
+        ax.set_title("Grid World Training Reward")
+        plt.show()
 
-    alg.env.make_plot()
+        alg.env.make_plot()
 
-    plt.figure()
+    # plt.figure()
     best_network = alg._select_networks(1, test=True)[0]
     state_dict = best_network.state_dict()
-    alg.test(state_dict, moving_people)
+    reward, reward_list, gaze_list = alg.test(state_dict, moving_people, track_gaze=True, max_steps=50)
 
     # save = input("Save weights? (y/n) \n")
     # if save == "y":
     #     np.save("best_state_dict.npy", np.array([state_dict]))
+
+    fig, ax = plt.subplots(1,2)
+    time_steps = np.arange(0, len(reward_list))
+    def animate(i):
+        ax[0].clear()
+        ax[1].clear()
+        alg.env.gaze_pos = gaze_list[i]
+        alg.env.make_plot(ax[1])
+        ax[0].plot(time_steps[0:i], reward_list[0:i])
+        ax[0].set_ylim([-1, 8])
+
+    # run the animation
+    ani = FuncAnimation(fig, animate, len(gaze_list), repeat=False)
+    plt.show()
+    ani.save('test.gif')
+
         
 
 
