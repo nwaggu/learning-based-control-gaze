@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 
 import qlearn
 from neuroevolution import NeuroEvolution, NeuralNetwork

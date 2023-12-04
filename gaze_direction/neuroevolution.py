@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import copy
@@ -9,12 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-
-# plt.ion()
-
-## ------------- INITIALIZE GRIDWORLD ------------- ##
 from sim2D import SIM2D
-# env = SIM2D()
 
 ## ------------- INITIALIZE PYTORCH ------------- ##
 device = (
@@ -24,6 +18,8 @@ device = (
     if torch.backends.mps.is_available()
     else "cpu"
 )
+
+## ------------- CREATE NEURAL NETWORK ------------- ##
 
 class NeuralNetwork(nn.Module):
     def __init__(self, n_inputs):
@@ -46,6 +42,8 @@ class NeuralNetwork(nn.Module):
         output = self.linear_relu_stack(x)
         return output
 
+## ------------- CREATE NEUROEVOLUTION ALGORITHM ------------- ##
+
 class NeuroEvolution(SIM2D):
     def __init__(self, num_networks) -> None:
 
@@ -60,7 +58,7 @@ class NeuroEvolution(SIM2D):
     def _generate_networks(self, num_networks):
         self.network_pool = np.zeros((num_networks, 2), dtype=object)
         for i, _ in enumerate(self.network_pool):
-            self.network_pool[i,0] = NeuralNetwork(self.num_states)
+            self.network_pool[i,0] = NeuralNetwork(self.num_states).to(device)
 
     def _initialize_networks(self, num_networks):
         """Runs each network once to initialize their fitnesses"""
@@ -68,10 +66,8 @@ class NeuroEvolution(SIM2D):
         for i, val in enumerate(self.network_pool):
             # "val" is np.array of [network, fitness]
             network = val[0]
-
             state = self.env.reset()
             action = self.select_action(network, state)
-
             reward = self._run(state, action, network)
             self.network_pool[i,1] = reward
 
@@ -209,7 +205,8 @@ class NeuroEvolution(SIM2D):
             self.network_pool = np.append(self.network_pool, [[val, fitness[i]]], axis=0)
 
     def select_action(self, network, state, epsilon=0.1):
-        """in the gridworld, actions are currently (11/22) move by (Δx, Δy). Going 
+        """Selects and action based on a network and state, with some randomness.
+            in the gridworld, actions are currently (11/22) move by (Δx, Δy). Going 
             to eventualy move to (θ, φ) angle pan"""
         prob = np.random.uniform()
         # ε% of the time, move randomly
@@ -228,6 +225,8 @@ class NeuroEvolution(SIM2D):
         return action[0]
     
     def _run(self, state, action, network, max_steps=50, visualizer=False, epsilon=0.1, moving_people=False):
+        """Runs a network for T time steps given an initial state and action. 
+            Returns the total reward accumulated over T timesteps"""
         time_step_reward = 0
         reward_over_time = []
         for time_step in range(max_steps):
@@ -285,7 +284,7 @@ class NeuroEvolution(SIM2D):
     
     def test(self, state_dict=None, moving_people=False):
         """Loads the best state dictionary and runs it on a reset environment"""
-        network = NeuralNetwork(self.num_states)
+        network = NeuralNetwork(self.num_states).to(device)
 
         if state_dict is None:
             state_dict = np.load("best_state_dict.npy", allow_pickle=True)[0]
