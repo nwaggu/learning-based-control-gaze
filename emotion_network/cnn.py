@@ -84,21 +84,20 @@ class CNNetwork(nn.Module):
             nn.ReLU(),
         )
         self.flatten = nn.Flatten(start_dim=1)
-        self.linear = nn.Linear(2304, 512)
-        self.linear_2 = nn.Linear(512, 8)
+        self.linear = nn.Linear(1664, 512)
+        self.linear_2 = nn.Linear(512, 4)
         self.softmax = nn.Softmax(dim=1)
     
     def forward(self, input_data):
-        print(input_data.shape)
         x = self.conv1(input_data)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.flatten(x)
-        logits = self.linear(x)
-        final = self.linear_2(logits)
-        predictions = self.softmax(logits)
-        return predictions
+        fc = self.linear(x)
+        final = self.linear_2(fc)
+        #predictions = self.softmax(final)
+        return final
 
 
 
@@ -108,4 +107,4 @@ if __name__ =="__main__":
     cnn = CNNetwork()
     if torch.cuda.is_available():
         cnn.cuda()
-    summary(cnn, (1,128,128))
+    summary(cnn, (1,201,241))

@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from cnn_oone import CNNetwork1D
+from cnn import CNNetwork
 from custom_dataset import EmotionSpeechDataset
 from torch.utils.data import DataLoader
 import torchaudio
@@ -9,8 +9,7 @@ from torchsummary import summary
 #What you want the dataset to guess
 #In our case it would be emotions probably!
 
-class_mapping = [
-"neutral", "calm", "happy", "sad", "angry", "fearful", "disgust", "surprised"
+class_mapping = [ "happy", "sad", "angry","surprised"
 ]
 
 def predict(model, input, target, class_mapping):
@@ -34,31 +33,31 @@ def predict(model, input, target, class_mapping):
 
 if __name__ == "__main__":
     #Load model
-    cnn_net = CNNetwork1D()
-    state_dict = torch.load("cnn.pth")
+    cnn_net = CNNetwork()
+    state_dict = torch.load("new_2.pth")
     cnn_net.load_state_dict(state_dict)
 
 
     #audio = 'C:\\Users\\nnamd\\Documents\\Homework\\LBC Proejct\\emotion_network\\emotional_audio_dataset\\Training'
-    validation_location = 'C:\\Users\\nnamd\\Documents\\Homework\\LBC Proejct\\emotion_network\\emotional_audio_dataset\\Training'
-    SAMPLE_RATE = 28300
-    NUM_SAMPLES=85000
+    validation_location = 'C:\\Users\\nnamd\\Documents\\Homework\\LBC Proejct\\emotion_network\\emotional_audio_dataset\\Validation'
+    SAMPLE_RATE = 16000
+    NUM_SAMPLES=48000
 
 
     if torch.cuda.is_available():
         device = "cpu"
     print(device)
 
-    mel_spectrogram = torchaudio.transforms.MelSpectrogram(
-        sample_rate=SAMPLE_RATE,
-        n_fft=1024,
-        hop_length=512,
-        n_mels=64
+    spectrogram = torchaudio.transforms.MelSpectrogram(
+        sample_rate = SAMPLE_RATE,
+        n_fft=400,
+        n_mels = 64
     )
+    
     #ms = mel_spectrogram(signal)
     count= 0
     correct = 0
-    validation_data = EmotionSpeechDataset(validation_location, mel_spectrogram, SAMPLE_RATE, NUM_SAMPLES, device)
+    validation_data = EmotionSpeechDataset(validation_location, spectrogram,NUM_SAMPLES, device=device)
     train_data_loader = DataLoader(validation_data)
     for step, (data, label) in enumerate(train_data_loader):
         predicted, expected = predict(cnn_net, data, label, class_mapping)
