@@ -105,7 +105,6 @@ class EmotionSpeechDataset(Dataset):
         elif lab == 8:
             return 3
         else:
-            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~impossible")
             return 0
     
 

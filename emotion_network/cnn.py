@@ -103,8 +103,8 @@ class CNNetwork(nn.Module):
 
 
 
-if __name__ =="__main__":
-    cnn = CNNetwork()
-    if torch.cuda.is_available():
-        cnn.cuda()
-    summary(cnn, (1,201,241))
+# if __name__ =="__main__":
+#     cnn = CNNetwork()
+#     if torch.cuda.is_available():
+#         cnn.cuda()
+#     summary(cnn, (1,201,241))
