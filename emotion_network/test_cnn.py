@@ -22,10 +22,8 @@ def predict(model, input, target, class_mapping):
         #Dim 1 = # of samples, Dim 2 = # of classes
         predictions = softmax(predictions)
         predicted_index = predictions[0].argmax()
-        print(predictions)
         predicted = class_mapping[predicted_index]
         expected = class_mapping[target]
-        print("complete")
         return predicted, expected
 
 
@@ -34,7 +32,7 @@ def predict(model, input, target, class_mapping):
 if __name__ == "__main__":
     #Load model
     cnn_net = CNNetwork()
-    state_dict = torch.load("new_2.pth")
+    state_dict = torch.load("new_3.pth")
     cnn_net.load_state_dict(state_dict)
 
 
@@ -58,8 +56,8 @@ if __name__ == "__main__":
     count= 0
     correct = 0
     validation_data = EmotionSpeechDataset(validation_location, spectrogram,NUM_SAMPLES, device=device)
-    train_data_loader = DataLoader(validation_data)
-    for step, (data, label) in enumerate(train_data_loader):
+    val_data_loader = DataLoader(validation_data)
+    for step, (data, label) in enumerate(val_data_loader):
         predicted, expected = predict(cnn_net, data, label, class_mapping)
         print(f"Predicted: {predicted}, Expected: {expected}")
         if predicted == expected:
